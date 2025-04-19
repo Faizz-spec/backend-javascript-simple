@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Realtime Speech Translator</title>
+  <style>
+    body { font-family: sans-serif; padding: 20px; background: #111; color: #eee; }
+    button { padding: 10px 20px; font-size: 16px; }
+    select { padding: 5px; font-size: 16px; }
+    #original, #translated { margin-top: 10px; padding: 10px; background: #222; border-radius: 5px; }
+  </style>
+</head>
+<body>
+  <h2>🎙️ Realtime Speech Translator</h2>
+  <p>Ucapkan dalam bahasa <b id="fromLangLabel">Inggris</b> → diterjemahkan ke <b id="toLangLabel">Indonesia</b></p>
+
+  <label for="langSwitch">Pilih Arah Terjemahan: </label>
+  <select id="langSwitch">
+    <option value="en-id">Inggris ➜ Indonesia</option>
+    <option value="id-en">Indonesia ➜ Inggris</option>
+  </select>
+  <br><br>
+  <button onclick="startRecognition()">🎤 Mulai Bicara</button>
+
+  <div id="original"><b>Input:</b> <span id="inputText">-</span></div>
+  <div id="translated"><b>Terjemahan:</b> <span id="translatedText">-</span></div>
+
+  <script>
+    const inputText = document.getElementById('inputText');
+    const translatedText = document.getElementById('translatedText');
+    const fromLangLabel = document.getElementById('fromLangLabel');
+    const toLangLabel = document.getElementById('toLangLabel');
+
+    let fromLang = 'en';
+    let toLang = 'id';
+
+    document.getElementById('langSwitch').addEventListener('change', (e) => {
+      const value = e.target.value;
+      if (value === 'en-id') {
+        fromLang = 'en';
+        toLang = 'id';
+        fromLangLabel.textContent = 'Inggris';
+        toLangLabel.textContent = 'Indonesia';
+      } else {
+        fromLang = 'id';
+        toLang = 'en';
+        fromLangLabel.textContent = 'Indonesia';
+        toLangLabel.textContent = 'Inggris';
+      }
+    });
+
+    function startRecognition() {
+      const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+      recognition.lang = fromLang === 'en' ? 'en-US' : 'id-ID';
+      recognition.interimResults = false;
+      recognition.maxAlternatives = 1;
+
+      recognition.start();
+
+      recognition.onresult = async (event) => {
+        const spokenText = event.results[0][0].transcript;
+        inputText.textContent = spokenText;
+
+        // Kirim ke LibreTranslate API
+        try {
+            const response = await fetch('https://translate.argosopentech.com/translate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    q: spokenText,
+                    source: fromLang,
+                    target: toLang,
+                    format: 'text'
+                })
+                });
+
+
+          const data = await response.json();
+          translatedText.textContent = data.translatedText;
+        } catch (err) {
+          translatedText.textContent = '❌ Gagal menerjemahkan';
+          console.error(err);
+        }
+      };
+
+      recognition.onerror = (event) => {
+        alert('Error: ' + event.error);
+      };
+    }
+  </script>
+</body>
+</html>
